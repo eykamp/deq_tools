@@ -4,6 +4,8 @@
 # Run the following:
 #    python setup.py sdist
 #    python -m twine upload dist/*
+#    del deq_tools.egg-info
+#    del dist
 
 import setuptools
 
@@ -11,8 +13,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    download_url='https://github.com/eykamp/deq_tools/archive/v0.1.2.tar.gz',
-    version='0.1.2',
+    download_url='https://github.com/eykamp/deq_tools/archive/v0.1.3.tar.gz',
+    version='0.1.3',
 	name='deq_tools',
     author='Chris Eykamp',
     author_email='chris@eykamp.com',
