@@ -1,5 +1,5 @@
 Install with pip:<br>
-`pip install deq-tools
+`pip install deq-tools`
 
 deq_tools is a limited functionality Python library for accessing Oregon DEQ Air Quality data with a Python script.
 
