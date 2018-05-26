@@ -3,6 +3,7 @@ deq_tools is a limited functionality library of tools for accessing Oregon DEQ A
 Usage:
 ```python
 import deq_tools
+
 print(deq_tools.get_station_names())    # Dump a list of names of stations where data may be available
 print(deq_tools.get_station_data())     # Dump all station info, including data available for each station
     
@@ -13,7 +14,7 @@ to_ts = "2018/05/10T23:59"
 print(deq_tools.get_deq_data(station_id, from_ts, to_ts))   # Get the data
 ```    
     
-`get_deq_data()` also takes these optional named parameters: 
+In addition to the required positional parameters shown above, `get_deq_data()` also takes these optional named parameters: 
 <dl>    
   <dt>resolution:</dt><dd>Default = 60. 60 for hourly data, 1440 for daily averages.  Higher resolutions don't work, sorry, but lower-resolutions, such as 120, 180, 480, 720 will.  </dd>
   <dt>agg_method:</dt><dd>Default = "Average". These will *probably* all work: Average, MinAverage, MaxAverage, RunningAverage, MinRunningAverage, MaxRunningAverage, RunningForword, MinRunningForword, MaxRunningForword.  </dd>
