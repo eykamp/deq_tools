@@ -30,7 +30,7 @@ resolution: 60 for hourly data, 1440 for daily averages.  Higher resolutions don
 agg_method: These will *probably* all work: Average, MinAverage, MaxAverage, RunningAverage, MinRunningAverage, MaxRunningAverage, RunningForword, MinRunningForword, MaxRunningForword
 
 '''
-def get_deq_data(station_id, from_timestamp, to_timestamp, resolution=60, agg_method="Average"):
+def get_data(station_id, from_timestamp, to_timestamp, resolution=60, agg_method="Average"):
     count = 99999               # This should be greater than the number of reporting periods in the data range specified above
 
     params = "Sid=" + str(station_id) + "&FDate=" + from_timestamp + "&TDate=" + to_timestamp + "&TB=60&ToTB=" + str(resolution) + "&ReportType=" + agg_method + "&period=Custom_Date&first=true&take="+ str(count) + "&skip=0&page=1&pageSize=" + str(count)
@@ -138,4 +138,3 @@ These station ids were current as of May 2018:
  34 ==> The Dalles Cherry Heights School
  53 ==> The Dalles Wasco Library
  '''
- 

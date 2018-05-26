@@ -11,7 +11,7 @@ station_id = 2                          # Get this value from get_station_names(
 from_ts = "2018/05/03T00:00"            # ISO datetime format: YYYY/MM/SS/THH:MM
 to_ts = "2018/05/10T23:59"
 
-print(deq_tools.get_deq_data(station_id, from_ts, to_ts))   # Get the data
+print(deq_tools.get_data(station_id, from_ts, to_ts))   # Get the data
 ```    
     
 In addition to the required positional parameters shown above, `get_deq_data()` also takes these optional named parameters: 
