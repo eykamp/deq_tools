@@ -13,8 +13,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    download_url='https://github.com/eykamp/deq_tools/archive/v0.1.3.tar.gz',
-    version='0.1.3',
+    download_url='https://github.com/eykamp/deq_tools/archive/v0.1.4.tar.gz',
+    version='0.1.4',
 	name='deq_tools',
     author='Chris Eykamp',
     author_email='chris@eykamp.com',
