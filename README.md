@@ -16,6 +16,6 @@ print(deq_tools.get_data(station_id, from_ts, to_ts))   # Get the data
     
 In addition to the required positional parameters shown above, `get_deq_data()` also takes these optional named parameters: 
 <dl>    
-  <dt>resolution:</dt><dd>Default = 60. 60 for hourly data, 1440 for daily averages.  Higher resolutions don't work, sorry, but lower-resolutions, such as 120, 180, 480, 720 will.  </dd>
+  <dt>resolution:</dt><dd>Default = 60. 60 for hourly data, 1440 for daily values.  Higher resolutions don't work, sorry, but lower-resolutions, such as 120, 180, 480, 720 will.  </dd>
     <dt>agg_method:</dt><dd>Default = "Average". These will <i>probably</i> all work: Average, MinAverage, MaxAverage, RunningAverage, MinRunningAverage, MaxRunningAverage, RunningForword, MinRunningForword, MaxRunningForword.  </dd>
 </dl>
