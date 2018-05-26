@@ -1,4 +1,4 @@
-deq_tools is a limited functionality library of tools for accessing Oregon DEQ Air Quality data with a Python script.
+deq_tools is a limited functionality Python library for accessing Oregon DEQ Air Quality data with a Python script.
 
 Usage:
 ```python
