@@ -63,7 +63,7 @@ def get_data(station_id, from_timestamp, to_timestamp, resolution=60, agg_method
 
         for key, val in d.items():
             if key != "datetime":
-                # Remove missing values
+                # Skip missing values
                 if val == "----":
                     continue
 
