@@ -4,8 +4,8 @@
 # Run the following:
 #    python setup.py sdist
 #    python -m twine upload dist/*
-#    del deq_tools.egg-info
-#    del dist
+#    del /q deq_tools.egg-info
+#    del /q dist
 
 import setuptools
 
