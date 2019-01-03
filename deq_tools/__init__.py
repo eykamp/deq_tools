@@ -28,15 +28,16 @@ station_id: See bottom of this file for a list of valid station ides
 from_timestamp, to_timestamp: specify in ISO datetime format: YYYY/MM/DDTHH:MM (e.g. "2018/05/03T00:00")
 resolution: 60 for hourly data, 1440 for daily averages.  Higher resolutions don't work, sorry, but lower-resolutions, such as 120, 180, 480, 720 will.
 agg_method: These will *probably* all work: Average, MinAverage, MaxAverage, RunningAverage, MinRunningAverage, MaxRunningAverage, RunningForword, MinRunningForword, MaxRunningForword
-
 '''
+
+
 def get_data(station_id, from_timestamp, to_timestamp, resolution=60, agg_method="Average"):
     count = 99999               # This should be greater than the number of reporting periods in the data range specified above
 
-    params = "Sid=" + str(station_id) + "&FDate=" + from_timestamp + "&TDate=" + to_timestamp + "&TB=60&ToTB=" + str(resolution) + "&ReportType=" + agg_method + "&period=Custom_Date&first=true&take="+ str(count) + "&skip=0&page=1&pageSize=" + str(count)
+    params = "Sid=" + str(station_id) + "&FDate=" + from_timestamp + "&TDate=" + to_timestamp + "&TB=60&ToTB=" + str(resolution) + "&ReportType=" + agg_method + "&period=Custom_Date&first=true&take=" + str(count) + "&skip=0&page=1&pageSize=" + str(count)
 
     req = requests.get(data_url + "?" + params)
-    (status, reason) = (req.status_code, req.reason)
+    # (status, reason) = (req.status_code, req.reason)
 
     json_response = json.loads(req.text)
 
@@ -67,7 +68,7 @@ def get_data(station_id, from_timestamp, to_timestamp, resolution=60, agg_method
                 if val == "----":
                     continue
 
-                if not dt in data:
+                if dt not in data:
                     data[dt] = {}
 
                 data[dt][titles[key]] = val
