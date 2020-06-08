@@ -97,56 +97,61 @@ def get_station_names():
 
 '''
 To get a current list of stations, print the output of deq_tools.get_station_names()
-These station ids were current as of June 2019:
-    1: 'Tualatin Bradbury Court',
-    2: 'Portland SE Lafayette',
-    6: 'Portland Jefferson HS',
-    7: 'Sauvie Island',
-    8: 'Beaverton Highland Park',
-    9: 'Hillsboro Hare Field',
-    10: 'Carus Spangler Road',
-    11: 'Salem State Hospital',
-    12: 'Turner Cascade Junior HS',
-    13: 'Lyons Marilynn School',
-    14: 'Albany Calapooia School',
-    15: 'Sweet Home Fire Department',
-    16: 'Corvallis Circle Blvd',
-    17: 'Roseburg Garden Valley',
-    19: 'Grants Pass Parkside School',
-    20: 'Medford TV',
-    22: 'Provolt Seed Orchard',
-    23: 'Shady Cove School',
-    24: 'Talent',
-    25: 'Crater Lake Rim',
-    26: 'Klamath Falls Peterson School',
-    27: 'Lakeview Center and M',
-    28: 'Bend Pump Station',
-    29: 'Multorpor',
-    30: 'Baker City Forest Service',
-    31: 'Enterprise Forest Service',
-    32: 'La Grande Hall and N',
-    33: 'Pendleton McKay Creek',
-    34: 'The Dalles Cherry Heights School',
-    37: 'Hermiston Municipal Airport',
-    39: 'Bend Road Department',
-    40: 'Madras Westside Elementary',
-    41: 'Prineville Davidson Park',
-    42: 'Burns Washington Street',
-    44: 'Silverton James and Western',
-    46: 'John Day Dayton Street',
-    47: 'Sisters Forest Service',
-    48: 'Cave Junction Forest Service',
-    49: 'Medford Welch and Jackson',
-    50: 'Ashland Fire Department',
-    56: 'Eugene Amazon Park',
-    57: 'Cottage Grove City Shops',
-    58: 'Springfield City Hall',
-    59: 'Eugene Saginaw',
-    60: 'Oakridge',
-    61: 'Eugene Wilkes Drive',
-    64: 'Portland Cully Helensview',
-    65: 'Eugene Highway 99',
-    68: 'HHF MET',
+These station ids were current as of June 2020:
+    1: 'Tualatin Bradbury Court'
+    2: 'Portland SE Lafayette'
+    6: 'Portland Jefferson HS'
+    7: 'Sauvie Island'
+    8: 'Beaverton Highland Park'
+    9: 'Hillsboro Hare Field'
+    10: 'Carus Spangler Road'
+    11: 'Salem State Hospital'
+    12: 'Turner Cascade Junior HS'
+    13: 'Lyons Marilynn School'
+    14: 'Albany Calapooia School'
+    15: 'Sweet Home Fire Department'
+    16: 'Corvallis Circle Blvd'
+    17: 'Roseburg Garden Valley'
+    19: 'Grants Pass Parkside School
+    20: 'Medford TV'
+    22: 'Provolt Seed Orchard'
+    23: 'Shady Cove School'
+    24: 'Talent'
+    26: 'Klamath Falls Peterson School'
+    27: 'Lakeview Center and M'
+    28: 'Bend Pump Station'
+    30: 'Baker City Forest Service'
+    31: 'Enterprise Forest Service'
+    32: 'La Grande Hall and N'
+    33: 'Pendleton McKay Creek'
+    34: 'The Dalles Cherry Heights School'
+    35: 'Cove City Hall'
+    37: 'Hermiston Municipal Airport'
+    39: 'Bend Road Department'
+    40: 'Madras Westside Elementary'
+    41: 'Prineville Davidson Park'
+    42: 'Burns Washington Street'
+    44: 'Silverton James and Western'
+    46: 'John Day Dayton Street'
+    47: 'Sisters Forest Service'
+    48: 'Cave Junction Forest Service'
+    49: 'Medford Welch and Jackson'
+    50: 'Ashland Fire Department'
+    56: 'Eugene Amazon Park'
+    57: 'Cottage Grove City Shops'
+    58: 'Springfield City Hall'
+    59: 'Eugene Saginaw'
+    60: 'Oakridge'
+    61: 'Eugene Wilkes Drive'
+    64: 'Portland Cully Helensview'
+    65: 'Eugene Highway 99'
+    67: 'Hillsboro Hare Field Sensor'
+    68: 'Hillsboro Hare Field Meteorology'
+    69: 'Forest Grove Pacific University'
     75: 'Florence Forestry Department'
-
+    78: 'Portland Humboldt Sensors'
+    82: 'Chiloquin Duke Drive'
+    85: 'Redmond High School'
+    88: 'Coos Bay Marshfield HS
+    90: 'Roseburg Fire Dept'
  '''
