@@ -6,3 +6,5 @@ dist/
 deq_tools\.egg-info/
 
 deq_tools/tempCodeRunnerFile\.py
+
+deq_tools/.vscode/settings.json
