@@ -23,7 +23,7 @@ import re
 station_url = "https://oraqi.deq.state.or.us/report/RegionReportTable"
 data_url = "https://oraqi.deq.state.or.us/report/stationReportTable"
 
-""" 
+"""
 station_id: See bottom of this file for a list of valid station ides
 from_timestamp, to_timestamp: specify in ISO datetime format: YYYY/MM/DDTHH:MM (e.g. "2018/05/03T00:00")
 resolution: 60 for hourly data, 1440 for daily averages.  Higher resolutions don't work, sorry, but lower-resolutions, such as 120, 180, 480, 720 will.
@@ -42,8 +42,12 @@ def get_data(station_id, from_timestamp, to_timestamp, resolution=60, agg_method
 
     json_response = json.loads(req.text)
 
-    response_data = json_response["Data"]
-    field_descr = json_response["ListDicUnits"]
+    response_data = json_response.get("Data")
+    field_descr = json_response.get("ListDicUnits")
+
+    if not field_descr or not response_data:
+        # Something went wrong -- request probably came back empty
+        raise Exception("Successfully able to connect to DEQ, but data came back without all the parts we need.  Response text: " + req.text)
 
     titles = {}
     units = {}
