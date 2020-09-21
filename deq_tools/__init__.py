@@ -40,7 +40,7 @@ def get_data(station_id, from_timestamp, to_timestamp, resolution=60, agg_method
     url = data_url + "?" + params
 
     req = requests.get(data_url + "?" + params)
-    (status, reason) = (req.status_code, req.reason)
+    status, reason = req.status_code, req.reason
 
     json_response = json.loads(req.text)
 
