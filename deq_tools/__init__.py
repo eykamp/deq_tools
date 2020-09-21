@@ -37,6 +37,8 @@ def get_data(station_id, from_timestamp, to_timestamp, resolution=60, agg_method
     params = "Sid=" + str(station_id) + "&FDate=" + from_timestamp + "&TDate=" + to_timestamp + "&TB=60&ToTB=" + str(resolution) + "&ReportType=" + \
         agg_method + "&period=Custom_Date&first=true&take=" + str(count) + "&skip=0&page=1&pageSize=" + str(count)
 
+    url = data_url + "?" + params
+
     req = requests.get(data_url + "?" + params)
     (status, reason) = (req.status_code, req.reason)
 
@@ -47,7 +49,7 @@ def get_data(station_id, from_timestamp, to_timestamp, resolution=60, agg_method
 
     if not field_descr or not response_data:
         # Something went wrong -- request probably came back empty
-        raise Exception("Successfully able to connect to DEQ, but data came back without all the parts we need.  Response text: " + req.text)
+        raise Exception("Successfully able to connect to DEQ, but data came back without all the parts we need.  URL: " + url + " | Response text: " + req.text)
 
     titles = {}
     units = {}
