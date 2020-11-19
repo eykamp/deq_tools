@@ -14,7 +14,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     download_url='https://github.com/eykamp/deq_tools/archive/v0.1.4.tar.gz',
-    version='0.1.4',
+    version='0.2.0',
 	name='deq_tools',
     author='Chris Eykamp',
     author_email='chris@eykamp.com',
