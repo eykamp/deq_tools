@@ -3,7 +3,7 @@
 # update this file with new version and download_url
 # Run the following:
 #    python setup.py sdist
-#    python -m twine upload dist/*
+#    python setup.py sdist upload
 #    del /q deq_tools.egg-info
 #    del /q dist
 
@@ -13,18 +13,18 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    download_url='https://github.com/eykamp/deq_tools/archive/v0.2.0.tar.gz',
-    version='0.2.0',
-	name='deq_tools',
-    author='Chris Eykamp',
-    author_email='chris@eykamp.com',
-    description='Tools for downloading Oregon DEQ Air Quality data',
+    download_url="https://github.com/eykamp/deq_tools/archive/v0.2.0.tar.gz",
+    version="0.2.0",
+	name="deq_tools",
+    author="Chris Eykamp",
+    author_email="chris@eykamp.com",
+    description="Tools for downloading Oregon DEQ Air Quality data",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url='https://github.com/eykamp/deq_tools',
+    url="https://github.com/eykamp/deq_tools",
     packages=setuptools.find_packages(),
-    license='MIT',
-    keywords=['deq','airquality','data'],
+    license="MIT",
+    keywords=["deq","airquality","data"],
     classifiers=[
       	"Programming Language :: Python :: 3",
       	"License :: OSI Approved :: MIT License",
