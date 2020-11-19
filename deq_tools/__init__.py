@@ -22,7 +22,7 @@ import json
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, validator                # pip install pydantic
 from tenacity import retry, stop_after_attempt, wait_fixed      # pip install tenacity
-from datetime import datetime       # type: ignore      <== this is used below, not sure why VS Code says it isn't
+from datetime import datetime as dt
 
 # station_url = "https://oraqi.deq.state.or.us/report/RegionReportTable"
 # data_url = "https://oraqi.deq.state.or.us/report/stationReportTable"
@@ -47,7 +47,7 @@ class Channel(BaseModel):
     units: str
 
 class StationRecord(BaseModel):
-    datetime: datetime
+    datetime: dt
     channels: List[Channel]
 
     @validator("datetime", pre=True)        # pre lets us modify the incoming value before it's parsed by pydantic
