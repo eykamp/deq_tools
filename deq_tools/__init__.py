@@ -20,7 +20,7 @@
 import requests     # pip install requests
 import json
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, validator                           # pip install pydantic
+from pydantic import BaseModel, Field, validator                # pip install pydantic
 from tenacity import retry, stop_after_attempt, wait_fixed      # pip install tenacity
 from datetime import datetime       # type: ignore      <== this is used below, not sure why VS Code says it isn't
 
