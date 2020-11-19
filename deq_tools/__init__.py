@@ -17,7 +17,7 @@
 
 # pyright: strict
 
-import requests     # pip install requests
+import requests                                                 # pip install requests
 import json
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, validator                # pip install pydantic
