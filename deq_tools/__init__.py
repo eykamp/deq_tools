@@ -15,13 +15,59 @@
 # COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import requests
+# pyright: strict
+
+import requests     # pip install requests
 import json
-import re
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, Field, validator                           # pip install pydantic
+from tenacity import retry, stop_after_attempt, wait_fixed      # pip install tenacity
+from datetime import datetime       # type: ignore      <== this is used below, not sure why VS Code says it isn't
+
+# station_url = "https://oraqi.deq.state.or.us/report/RegionReportTable"
+# data_url = "https://oraqi.deq.state.or.us/report/stationReportTable"
+
+station_url = "http://oregon.envi-das.com/ajax/getAllStationsWithoutFiltering"
+data_url = "http://oregon.envi-das.com/report/GetMultiStationReportData"
 
 
-station_url = "https://oraqi.deq.state.or.us/report/RegionReportTable"
-data_url = "https://oraqi.deq.state.or.us/report/stationReportTable"
+REQUEST_HEADERS = {"Content-Type": "application/json; charset=UTF-8"}
+
+
+class Channel(BaseModel):
+    display_name: str = Field(alias="DisplayName")
+    id: int
+    name: str
+    alias: Optional[str]
+    value: float
+    status: int
+    valid: bool
+    description: Optional[str]
+    value_date: Optional[str]
+    units: str
+
+class StationRecord(BaseModel):
+    datetime: datetime
+    channels: List[Channel]
+
+    @validator("datetime", pre=True)        # pre lets us modify the incoming value before it's parsed by pydantic
+    def fix_deq_date(cls, val: str):
+        """
+        Datetimes reported by DEQ have a reported UTC offset of -05:00 but are actually -08:00.
+        First, we'll verify that the dates are still broken in the way we expect them to be;
+        Second, we'll fix them before importing.  This *should* work during both PST and PDT.
+
+        Note on DEQ website (in footer of interactive reports page):
+        Data on this site is presented in Standard Time at the time the measurement ended. There
+        is no adjustment for Daylight Saving Time during its use from March to November.
+        PST is UTC - 8 hours
+
+        Further note that during DST, the adjusted times will not align with what is shown on the website
+        because website times are in PST, but adjusted times may appear in PDT when converted from
+        epoch time.
+        """
+        assert "-05:00" in val      # Confirm data is still being reported with utcoffset -5 hours
+        return val.replace("-05:00", "-08:00")
 
 """
 station_id: See bottom of this file for a list of valid station ides
@@ -29,79 +75,89 @@ from_timestamp, to_timestamp: specify in ISO datetime format: YYYY/MM/DDTHH:MM (
 resolution: 60 for hourly data, 1440 for daily averages.  Higher resolutions don't work, sorry, but lower-resolutions, such as 120, 180, 480, 720 will.
 agg_method: These will *probably* all work: Average, MinAverage, MaxAverage, RunningAverage, MinRunningAverage, MaxRunningAverage, RunningForword, MinRunningForword, MaxRunningForword
 """
+def get_data(station_id: int, from_timestamp: str, to_timestamp: str, resolution: int = 60, agg_method: str = "Average") -> List[StationRecord]:
+    # count = 99999               # This should be greater than the number of reporting periods in the data range specified above
+
+    # params = "Sid=" + str(station_id) + "&FDate=" + from_timestamp + "&TDate=" + to_timestamp + "&TB=60&ToTB=" + str(resolution) + "&ReportType=" + \
+    #     agg_method + "&period=Custom_Date&first=true&take=" + str(count) + "&skip=0&page=1&pageSize=" + str(count)
 
 
-def get_data(station_id, from_timestamp, to_timestamp, resolution=60, agg_method="Average"):
-    count = 99999               # This should be greater than the number of reporting periods in the data range specified above
+    channel_list: List[int] = list()
 
-    params = "Sid=" + str(station_id) + "&FDate=" + from_timestamp + "&TDate=" + to_timestamp + "&TB=60&ToTB=" + str(resolution) + "&ReportType=" + \
-        agg_method + "&period=Custom_Date&first=true&take=" + str(count) + "&skip=0&page=1&pageSize=" + str(count)
+    stations = get_station_data()
+    for station in stations:
+        if station["serialCode"] == station_id:
+            for monitor in station["monitors"]:
+                channel_list.append(monitor["channel"])
+            break
 
-    url = data_url + "?" + params
+    payload = {
+        "monitorChannelsByStationId": {
+            str(station_id): channel_list
+        },
+        "reportName": "multi Station report",
+        "startDateAbsolute": from_timestamp,
+        "endDateAbsolute": to_timestamp,
+        "startDate": from_timestamp,
+        "endDate": to_timestamp,
+        "reportType": agg_method,
+        "fromTb": resolution,
+        "toTb": resolution,
+        "monitorChannelsByStationId[0].Key": str(station_id),
+        "monitorChannelsByStationId[0].Value": channel_list
+    }
 
-    req = requests.get(data_url + "?" + params)
-    status, reason = req.status_code, req.reason
+    req = post(data_url, headers=REQUEST_HEADERS, data=json.dumps(payload))
 
-    json_response = json.loads(req.text)
+    req.raise_for_status()
 
-    response_data = json_response.get("Data")
-    field_descr = json_response.get("ListDicUnits")
+    records = req.json()[0]["data"]     # type: ignore
 
-    if not field_descr or not response_data:
-        # Something went wrong -- request probably came back empty
-        raise Exception("Successfully able to connect to DEQ, but data came back without all the parts we need.  URL: " + url + " | Response text: " + req.text)
+    all_records: List[StationRecord] = list()
 
-    titles = {}
-    units = {}
+    for record in records:
+        all_records.append(StationRecord(datetime=record["datetime"], channels=record["channels"]))
 
-    for d in field_descr:
-        name = d["field"]
-        words = re.split('<br/>', d["title"])       # d["title"] ==> Wind Direction <br/>Deg
-        titles[name] = words[0].strip()
-        if len(words) > 1:
-            units[name] = words[1].strip()
-        else:
-            units[name] = ""
+    # This need not remain here permanently, but for now let's verify the data arrived in chronological order.
+    # If this ever fails, we'll sort.
+    for i, record in enumerate(all_records[1:]):
+        assert all_records[i].datetime < record.datetime
 
-    data = {}       # Restructured sensor data retrieved from DEQ
-
-    for d in response_data:
-        dt = d["datetime"]
-
-        for key, val in d.items():
-            if key != "datetime":
-                # Remove missing values
-                if val == "----":
-                    continue
-
-                if dt not in data:
-                    data[dt] = {}
-
-                data[dt][titles[key]] = val
-
-    return data
+    return all_records
 
 
-def get_station_data():
-    req = requests.get(station_url)
-    return json.loads(req.text)["Data"]
+# These fail a lot, so we'll try tenacity
+@retry(stop=stop_after_attempt(10), wait=wait_fixed(10), reraise=True)
+def post(*args: Any, **kwargs: Any) -> requests.Response:
+    req = requests.post(*args, **kwargs)                        # type: ignore
+    req.raise_for_status()
+    return req
 
 
-def get_station_names():
-    data = get_station_data()
-
-    stations = {}
-
-    for d in data:
-        for r in d["stations"]:
-            stations[r["stationId"]] = r["name"]
-
-    return stations
+@retry(stop=stop_after_attempt(10), wait=wait_fixed(10), reraise=True)
+def get(*args: Any, **kwargs: Any) -> requests.Response:
+    req = requests.get(*args, **kwargs)                         # type: ignore
+    req.raise_for_status()
+    return req
 
 
-'''
+def get_station_data() -> List[Dict[str, Any]]:
+    return post(station_url, headers=REQUEST_HEADERS).json()    # type: ignore
+
+
+def get_station_names() -> Dict[int, str]:
+    stations_names = {}
+
+    stations = get_station_data()
+    for station in stations:
+        stations_names[station["serialCode"]] = station["name"]
+
+    return stations_names
+
+
+"""
 To get a current list of stations, print the output of deq_tools.get_station_names()
-These station ids were current as of June 2020:
+These station ids were current as of Sept 2020:
     1: 'Tualatin Bradbury Court'
     2: 'Portland SE Lafayette'
     6: 'Portland Jefferson HS'
@@ -158,4 +214,4 @@ These station ids were current as of June 2020:
     85: 'Redmond High School'
     88: 'Coos Bay Marshfield HS
     90: 'Roseburg Fire Dept'
-'''
+"""
