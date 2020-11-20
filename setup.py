@@ -17,7 +17,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
 	name="deq_tools",
-    version="0.2.0",
+    version="0.2.1",
     download_url="https://github.com/eykamp/deq_tools/archive/v0.2.0.tar.gz",
     author="Chris Eykamp",
     author_email="chris@eykamp.com",
@@ -32,5 +32,10 @@ setuptools.setup(
       	"Programming Language :: Python :: 3",
       	"License :: OSI Approved :: MIT License",
       	"Operating System :: OS Independent",
-    ]
+    ],
+    install_requires=[
+        "requests",
+        "pydantic",
+        "tenacity",
+    ],
 )
