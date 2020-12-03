@@ -5,7 +5,7 @@
 #    python setup.py sdist bdist_wheel
 #    twine check dist/*
 # check SOURCES.txt to make sure no extraneous files were included
-#    python -m twine upload  dist/*
+#    twine upload dist/*
 #    del /q deq_tools.egg-info
 #    del /q dist
 #    del /q build
@@ -17,8 +17,8 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
 	name="deq_tools",
-    version="0.2.1",
-    download_url="https://github.com/eykamp/deq_tools/archive/v0.2.0.tar.gz",
+    version="0.2.2",
+    download_url="https://github.com/eykamp/deq_tools/archive/v0.2.2.tar.gz",
     author="Chris Eykamp",
     author_email="chris@eykamp.com",
     description="Tools for downloading Oregon DEQ Air Quality data",
