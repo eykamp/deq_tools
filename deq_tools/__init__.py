@@ -22,7 +22,7 @@ import json
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, validator                # pip install pydantic
 from tenacity import retry, stop_after_attempt, wait_fixed      # pip install tenacity
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta, timezone
 
 # station_url = "https://oraqi.deq.state.or.us/report/RegionReportTable"
 # data_url = "https://oraqi.deq.state.or.us/report/stationReportTable"
@@ -30,6 +30,7 @@ from datetime import datetime as dt
 station_url = "http://oregon.envi-das.com/ajax/getAllStationsWithoutFiltering"
 data_url = "http://oregon.envi-das.com/report/GetMultiStationReportData"
 
+deq_tz = timezone(timedelta(hours=-8), name="DEQ")      # All DEQ data is reported with a constant -8 hour offset from UTC
 
 REQUEST_HEADERS = {"Content-Type": "application/json; charset=UTF-8"}
 
@@ -75,7 +76,7 @@ from_timestamp, to_timestamp: specify in ISO datetime format: YYYY/MM/DDTHH:MM (
 resolution: 60 for hourly data, 1440 for daily averages.  Higher resolutions don't work, sorry, but lower-resolutions, such as 120, 180, 480, 720 will.
 agg_method: These will *probably* all work: Average, MinAverage, MaxAverage, RunningAverage, MinRunningAverage, MaxRunningAverage, RunningForword, MinRunningForword, MaxRunningForword
 """
-def get_data(station_id: int, from_timestamp: str, to_timestamp: str, resolution: int = 60, agg_method: str = "Average") -> List[StationRecord]:
+def get_data(station_id: int, from_timestamp: dt, to_timestamp: dt, resolution: int = 60, agg_method: str = "Average") -> List[StationRecord]:
     # count = 99999               # This should be greater than the number of reporting periods in the data range specified above
 
     # params = "Sid=" + str(station_id) + "&FDate=" + from_timestamp + "&TDate=" + to_timestamp + "&TB=60&ToTB=" + str(resolution) + "&ReportType=" + \
@@ -91,15 +92,19 @@ def get_data(station_id: int, from_timestamp: str, to_timestamp: str, resolution
                 channel_list.append(monitor["channel"])
             break
 
+    def utc_to_local(utc_dt: dt) -> dt:
+        return utc_dt.replace(tzinfo=timezone.utc).astimezone(deq_tz)
+
+
     payload = {
         "monitorChannelsByStationId": {
             str(station_id): channel_list
         },
         "reportName": "multi Station report",
-        "startDateAbsolute": from_timestamp,
-        "endDateAbsolute": to_timestamp,
-        "startDate": from_timestamp,
-        "endDate": to_timestamp,
+        "startDateAbsolute": utc_to_local(from_timestamp).strftime("%Y/%m/%dT%H:%M"),
+        "endDateAbsolute": utc_to_local(to_timestamp).strftime("%Y/%m/%dT%H:%M"),
+        "startDate": utc_to_local(from_timestamp).strftime("%Y/%m/%dT%H:%M"),
+        "endDate": utc_to_local(to_timestamp).strftime("%Y/%m/%dT%H:%M"),
         "reportType": agg_method,
         "fromTb": resolution,
         "toTb": resolution,
