@@ -2,13 +2,13 @@
 # Create new release on GitHub
 # update this file with new version and download_url
 # Run the following:
-#    python setup.py sdist bdist_wheel
+#    python setup.py sdist
 #    twine check dist/*
 # check SOURCES.txt to make sure no extraneous files were included
 #    twine upload dist/*
-#    del /q deq_tools.egg-info
-#    del /q dist
-#    del /q build
+#    del deq_tools.egg-info
+#    del dist
+#    del build
 
 import setuptools
 
