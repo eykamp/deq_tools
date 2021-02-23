@@ -1,5 +1,5 @@
 # https://github.com/fhamborg/news-please/wiki/PyPI---How-to-upload-a-new-version
-# Create new release on GitHub
+# Create new release on GitHub (tag commit with v0.2.3)
 # update this file with new version and download_url
 # Run the following:
 #    python setup.py sdist
@@ -8,7 +8,7 @@
 #    twine upload dist/*
 #    del deq_tools.egg-info
 #    del dist
-#    del build
+#    del build   rem does this really exist?
 
 import setuptools
 
