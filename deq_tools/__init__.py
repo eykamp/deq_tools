@@ -24,13 +24,10 @@ from pydantic import BaseModel, Field, validator                # pip install py
 from tenacity import retry, stop_after_attempt, wait_fixed      # pip install tenacity
 from datetime import datetime as dt, timedelta, timezone
 
-# station_url = "https://oraqi.deq.state.or.us/report/RegionReportTable"
-# data_url = "https://oraqi.deq.state.or.us/report/stationReportTable"
+STATION_URL = "https://oraqi.deq.state.or.us/ajax/getAllStationsWithoutFiltering"
+DATA_URL = "https://oraqi.deq.state.or.us/report/GetMultiStationReportData"
 
-station_url = "http://oregon.envi-das.com/ajax/getAllStationsWithoutFiltering"
-data_url = "http://oregon.envi-das.com/report/GetMultiStationReportData"
-
-deq_tz = timezone(timedelta(hours=-8), name="DEQ")      # All DEQ data is reported with a constant -8 hour offset from UTC
+DEQ_TZ = timezone(timedelta(hours=-8), name="DEQ")      # All DEQ data is reported with a constant -8 hour offset from UTC
 
 REQUEST_HEADERS = {"Content-Type": "application/json; charset=UTF-8"}
 
@@ -67,8 +64,11 @@ class StationRecord(BaseModel):
         because website times are in PST, but adjusted times may appear in PDT when converted from
         epoch time.
         """
-        assert "-05:00" in val      # Confirm data is still being reported with utcoffset -5 hours
-        return val.replace("-05:00", "-08:00")
+        if "-05:00" in val:      # Confirm data is still being reported with utcoffset -5 hours
+            return val.replace("-05:00", "-08:00")
+        if "-08:00" in val:
+            return val
+        raise Exception(f"Unexpected timezone in datetime: {val}")
 
 """
 station_id: See bottom of this file for a list of valid station ides
@@ -93,7 +93,7 @@ def get_data(station_id: int, from_timestamp: dt, to_timestamp: dt, resolution: 
             break
 
     def utc_to_local(utc_dt: dt) -> dt:
-        return utc_dt.replace(tzinfo=timezone.utc).astimezone(deq_tz)
+        return utc_dt.replace(tzinfo=timezone.utc).astimezone(DEQ_TZ)
 
 
     payload = {
@@ -112,7 +112,7 @@ def get_data(station_id: int, from_timestamp: dt, to_timestamp: dt, resolution: 
         "monitorChannelsByStationId[0].Value": channel_list
     }
 
-    req = post(data_url, headers=REQUEST_HEADERS, data=json.dumps(payload))
+    req = post(DATA_URL, headers=REQUEST_HEADERS, data=json.dumps(payload))
 
     req.raise_for_status()
 
@@ -147,7 +147,7 @@ def get(*args: Any, **kwargs: Any) -> requests.Response:
 
 
 def get_station_data() -> List[Dict[str, Any]]:
-    return post(station_url, headers=REQUEST_HEADERS).json()    # type: ignore
+    return post(STATION_URL, headers=REQUEST_HEADERS).json()    # type: ignore
 
 
 def get_station_names() -> Dict[int, str]:
