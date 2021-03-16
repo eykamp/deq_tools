@@ -23,6 +23,7 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, validator                # pip install pydantic
 from tenacity import retry, stop_after_attempt, wait_fixed      # pip install tenacity
 from datetime import datetime as dt, timedelta, timezone
+import pytz
 
 STATION_URL = "https://oraqi.deq.state.or.us/ajax/getAllStationsWithoutFiltering"
 DATA_URL = "https://oraqi.deq.state.or.us/report/GetMultiStationReportData"
@@ -64,9 +65,9 @@ class StationRecord(BaseModel):
         because website times are in PST, but adjusted times may appear in PDT when converted from
         epoch time.
         """
-        if "-05:00" in val:      # Confirm data is still being reported with utcoffset -5 hours
-            return val.replace("-05:00", "-08:00")
-        if "-08:00" in val:
+        # if "-05:00" in val:      # Confirm data is still being reported with utcoffset -5 hours
+        #     return val.replace("-05:00", "-08:00")
+        if "-07:00"  in val or "-08:00" in val:
             return val
         raise Exception(f"Unexpected timezone in datetime: {val}")
 
@@ -93,7 +94,17 @@ def get_data(station_id: int, from_timestamp: dt, to_timestamp: dt, resolution: 
             break
 
     def utc_to_local(utc_dt: dt) -> dt:
+        """
+        Not sure what to do here -- website reports all data in PST even during summer,
+        but data is coming back in PDT even after the clocks changed.
+
+        This function is only used for requesting data, so maybe it doesn't matter; data
+        coming from DEQ has a timezone in the timestamp, so we don't need to guess there.
+        """
+
         return utc_dt.replace(tzinfo=timezone.utc).astimezone(DEQ_TZ)
+        # return utc_dt.replace(tzinfo=timezone.utc).astimezone(pytz.timezone("US/Pacific"))
+
 
 
     payload = {
