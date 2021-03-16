@@ -23,12 +23,9 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, validator                # pip install pydantic
 from tenacity import retry, stop_after_attempt, wait_fixed      # pip install tenacity
 from datetime import datetime as dt, timedelta, timezone
-import pytz
 
 STATION_URL = "https://oraqi.deq.state.or.us/ajax/getAllStationsWithoutFiltering"
 DATA_URL = "https://oraqi.deq.state.or.us/report/GetMultiStationReportData"
-
-DEQ_TZ = timezone(timedelta(hours=-8), name="DEQ")      # All DEQ data is reported with a constant -8 hour offset from UTC
 
 REQUEST_HEADERS = {"Content-Type": "application/json; charset=UTF-8"}
 
@@ -93,29 +90,16 @@ def get_data(station_id: int, from_timestamp: dt, to_timestamp: dt, resolution: 
                 channel_list.append(monitor["channel"])
             break
 
-    def utc_to_local(utc_dt: dt) -> dt:
-        """
-        Not sure what to do here -- website reports all data in PST even during summer,
-        but data is coming back in PDT even after the clocks changed.
-
-        This function is only used for requesting data, so maybe it doesn't matter; data
-        coming from DEQ has a timezone in the timestamp, so we don't need to guess there.
-        """
-
-        return utc_dt.replace(tzinfo=timezone.utc).astimezone(DEQ_TZ)
-        # return utc_dt.replace(tzinfo=timezone.utc).astimezone(pytz.timezone("US/Pacific"))
-
-
 
     payload = {
         "monitorChannelsByStationId": {
             str(station_id): channel_list
         },
         "reportName": "multi Station report",
-        "startDateAbsolute": utc_to_local(from_timestamp).strftime("%Y/%m/%dT%H:%M"),
-        "endDateAbsolute": utc_to_local(to_timestamp).strftime("%Y/%m/%dT%H:%M"),
-        "startDate": utc_to_local(from_timestamp).strftime("%Y/%m/%dT%H:%M"),
-        "endDate": utc_to_local(to_timestamp).strftime("%Y/%m/%dT%H:%M"),
+        "startDateAbsolute": from_timestamp.strftime("%Y/%m/%dT%H:%MZ"),        # UTC -- site seems timezone-aware
+        "endDateAbsolute": to_timestamp.strftime("%Y/%m/%dT%H:%MZ"),
+        "startDate": from_timestamp.strftime("%Y/%m/%dT%H:%MZ"),
+        "endDate": to_timestamp.strftime("%Y/%m/%dT%H:%MZ"),
         "reportType": agg_method,
         "fromTb": resolution,
         "toTb": resolution,
