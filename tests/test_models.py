@@ -33,7 +33,7 @@ def test_models_match_json(raw_data: List[Dict[str, Any]], station_data: List[Re
             filtered_json.append(r)
 
     for i, fj in enumerate(filtered_json):
-        model_json = Json.loads(station_data[i].json(by_alias=True))
+        model_json = Json.loads(station_data[i].model_dump_json(by_alias=True))
 
         ycm = YouchamaJsonDiffer(model_json, fj)
 
