@@ -1,4 +1,4 @@
-# Copyright 2018-2020, Chris Eykamp
+ # Copyright 2018-2023, Chris Eykamp
 
 # MIT License
 
@@ -17,201 +17,270 @@
 
 # pyright: strict
 
-import requests                                                 # pip install requests
-import json
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, validator                # pip install pydantic
+import requests                                                 # pip install requests
+from pydantic import BaseModel, Field, validator                # pip install pydantic      # type: ignore
 from tenacity import retry, stop_after_attempt, wait_fixed      # pip install tenacity
-from datetime import datetime as dt, timedelta, timezone
+from datetime import datetime as dt
 
-STATION_URL = "https://oraqi.deq.state.or.us/ajax/getAllStationsWithoutFiltering"
-DATA_URL = "https://oraqi.deq.state.or.us/report/GetMultiStationReportData"
 
-REQUEST_HEADERS = {"Content-Type": "application/json; charset=UTF-8"}
+# DEQ data display: https://oraqi.deq.state.or.us
+
+STATION_URL = "https://aqiapi.oregon.gov/v1/envista/regions"        # Retrieves station data
+DATA_URL = "https://aqiapi.oregon.gov/v1/envista/stations"          # Retrieves data from a station
+
+REQUEST_HEADERS = {
+    "Authorization": "ApiToken 644a9a20-ea8c-4bbb-89e6-6e04f97321fd",       # Not sure if this changes or not... can extract from https://oraqi.deq.state.or.us/
+    "Content-Type": "application/json; charset=UTF-8"
+}
+
+# Data models derived from https://app.quicktype.io
+
+class Location(BaseModel):
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+
+class Monitor(BaseModel):
+    channel_id: Optional[int] = Field(None, alias="channelId")
+    name: Optional[str] = None
+    alias: Optional[str] = None
+    description: Optional[str] = None
+    active: Optional[bool] = None
+    type_id: Optional[int] = Field(None, alias="typeId")
+    pollutant_id: Optional[int] = Field(None, alias="pollutantId")
+    units: Optional[str] = None
+    unit_id: Optional[int] = Field(None, alias="unitID")
+    map_view: Optional[bool] = Field(None, alias="mapView")
+    is_index: Optional[bool] = Field(None, alias="isIndex")
+    pollutant_category: Optional[int] = Field(None, alias="PollutantCategory")
+    numeric_format: Optional[str] = Field(None, alias="NumericFormat")
+    low_range: Optional[int] = Field(None, alias="LowRange")
+    high_range: Optional[int] = Field(None, alias="HighRange")
+    state: Optional[int] = None
+    pct_valid: Optional[int] = Field(None, alias="PctValid")
+    monitor_title: Optional[str] = Field(None, alias="MonitorTitle")
+    mon_start_date: Optional[dt] = Field(None, alias="MON_StartDate")       # First date with data
+    mon_end_date: Optional[dt] = Field(None, alias="MON_EndDate")           # Last date with data
+
+
+    @staticmethod
+    def interpret_date(value: str) -> dt:
+        return dt.strptime(value, "%m/%d/%Y %I:%M:%S %p")     # "12/31/9999 11:59:59 PM"
+
+    @validator("mon_start_date", pre=True)
+    def parse_dt1(cls, value: str):
+        return cls.interpret_date(value)
+
+    @validator("mon_end_date", pre=True)
+    def parse_dt2(cls, value: str):
+        return cls.interpret_date(value)
+
+
+class Station(BaseModel):
+    station_id: Optional[int] = Field(None, alias="stationId")
+    stations_tag: Optional[str] = Field(None, alias="stationsTag")
+    height: Optional[int] = None
+    name: Optional[str] = None
+    short_name: Optional[str] = Field(None, alias="shortName")
+    location: Optional[Location] = None
+    timebase: Optional[int] = None
+    active: Optional[bool] = None
+    owner: Optional[str] = None
+    owner_id: Optional[int] = Field(None, alias="ownerId")
+    region_id: Optional[int] = Field(None, alias="regionId")
+    monitors: Optional[List[Monitor]] = None
+    station_target: Optional[str] = Field(None, alias="StationTarget")
+    target_id: Optional[int] = Field(None, alias="TargetId")
+    county: Optional[str] = Field(None, alias="County")
+    city: Optional[str] = None
+    address: Optional[str] = None
+    time_bases: Optional[List[int]] = Field(None, alias="timeBases")
+    additional_timebases: Optional[str] = Field(None, alias="additionalTimebases")
+    is_non_continuous: Optional[str] = Field(None, alias="isNonContinuous")
+    map_view: Optional[bool] = Field(None, alias="mapView")
+    aqi_view: Optional[bool] = Field(None, alias="aqiView")
+    mobile: Optional[bool] = None
+    aqscode: Optional[str] = Field(None, alias="AQSCODE")
+
+
+class Region(BaseModel):
+    region_id: Optional[int] = Field(None, alias="regionId")
+    name: Optional[str] = None
+    stations: List[Station]
 
 
 class Channel(BaseModel):
-    display_name: str = Field(alias="DisplayName")
-    id: int
-    name: str
-    alias: Optional[str]
-    value: float
-    status: int
-    valid: bool
-    description: Optional[str]
-    value_date: Optional[str]
-    units: str
+    value_date: Optional[Any] = None    # I've never seen a value for this
+    status: Optional[int] = None
+    value: Optional[float] = None
+    valid: Optional[bool] = None
+    id: Optional[int] = None
+    units: Optional[str] = None
+    name: Optional[str] = None
 
-class StationRecord(BaseModel):
-    datetime: dt
-    channels: List[Channel]
 
-    @validator("datetime", pre=True)        # pre lets us modify the incoming value before it's parsed by pydantic
-    def fix_deq_date(cls, val: str):
-        """
-        Datetimes reported by DEQ have a reported UTC offset of -05:00 but are actually -08:00.
-        First, we'll verify that the dates are still broken in the way we expect them to be;
-        Second, we'll fix them before importing.  This *should* work during both PST and PDT.
+class StationDatum(BaseModel):
+    datetime: Optional[dt] = None
+    channels: List[Channel] = []
 
-        Note on DEQ website (in footer of interactive reports page):
-        Data on this site is presented in Standard Time at the time the measurement ended. There
-        is no adjustment for Daylight Saving Time during its use from March to November.
-        PST is UTC - 8 hours
 
-        Further note that during DST, the adjusted times will not align with what is shown on the website
-        because website times are in PST, but adjusted times may appear in PDT when converted from
-        epoch time.
-        """
-        # if "-05:00" in val:      # Confirm data is still being reported with utcoffset -5 hours
-        #     return val.replace("-05:00", "-08:00")
-        if "-07:00"  in val or "-08:00" in val:
-            return val
-        raise Exception(f"Unexpected timezone in datetime: {val}")
+class MonitorData(BaseModel):
+    data: List[StationDatum]
+
 
 """
-station_id: See bottom of this file for a list of valid station ides
+station_id: See bottom of this file for a list of valid station ids
 from_timestamp, to_timestamp: specify in ISO datetime format: YYYY/MM/DDTHH:MM (e.g. "2018/05/03T00:00")
-resolution: 60 for hourly data, 1440 for daily averages.  Higher resolutions don't work, sorry, but lower-resolutions, such as 120, 180, 480, 720 will.
-agg_method: These will *probably* all work: Average, MinAverage, MaxAverage, RunningAverage, MinRunningAverage, MaxRunningAverage, RunningForword, MinRunningForword, MaxRunningForword
+resolution: 60 for hourly data, 1440 for daily averages.  Higher resolutions such as 1 and 5 are available for some stations.
+agg_method: These work (not sure what the difference is): Average, RunningAverage
+percent_valid: No idea what this parameter does.
 """
-def get_data(station_id: int, from_timestamp: dt, to_timestamp: dt, resolution: int = 60, agg_method: str = "Average") -> List[StationRecord]:
-    # count = 99999               # This should be greater than the number of reporting periods in the data range specified above
-
-    # params = "Sid=" + str(station_id) + "&FDate=" + from_timestamp + "&TDate=" + to_timestamp + "&TB=60&ToTB=" + str(resolution) + "&ReportType=" + \
-    #     agg_method + "&period=Custom_Date&first=true&take=" + str(count) + "&skip=0&page=1&pageSize=" + str(count)
-
-
-    channel_list: List[int] = list()
-
-    stations = get_station_data()
-    for station in stations:
-        if station["serialCode"] == station_id:
-            for monitor in station["monitors"]:
-                channel_list.append(monitor["channel"])
-            break
-
-
-    payload = {
-        "monitorChannelsByStationId": {
-            str(station_id): channel_list
-        },
-        "reportName": "multi Station report",
-        "startDateAbsolute": from_timestamp.strftime("%Y/%m/%dT%H:%MZ"),        # UTC -- site seems timezone-aware
-        "endDateAbsolute": to_timestamp.strftime("%Y/%m/%dT%H:%MZ"),
-        "startDate": from_timestamp.strftime("%Y/%m/%dT%H:%MZ"),
-        "endDate": to_timestamp.strftime("%Y/%m/%dT%H:%MZ"),
-        "reportType": agg_method,
-        "fromTb": resolution,
-        "toTb": resolution,
-        "monitorChannelsByStationId[0].Key": str(station_id),
-        "monitorChannelsByStationId[0].Value": channel_list
+def get_data(station_id: int, from_timestamp: dt, to_timestamp: dt, channels: Optional[List[int]] = None, resolution: int = 60, agg_method: str = "Average", percent_valid: int = 75) -> MonitorData:
+    params = {
+        "filterChannels": ",".join([str(s) for s in channels]) if channels else "",
+        "from": from_timestamp.strftime("%Y-%m-%dT%H:%M:%S"),
+        "to": to_timestamp.strftime("%Y-%m-%dT%H:%M:%S"),
+        "fromTimebase": resolution,
+        "toTimebase": resolution,
+        "precentValid": percent_valid,
+        "timeBeginning": False,
+        "useBackWard": True,
+        "unitConversion": False,
+        "includeSummary": False,
+        "onlySummary": False,
     }
 
-    req = post(DATA_URL, headers=REQUEST_HEADERS, data=json.dumps(payload))
+    req = get(f"{DATA_URL}/{station_id}/{agg_method}", params=params, headers=REQUEST_HEADERS)
 
-    req.raise_for_status()
+    return MonitorData(**req.json())
 
-    records = req.json()[0]["data"]     # type: ignore
 
-    all_records: List[StationRecord] = list()
+def get_station_data() -> List[Region]:
+    regions: List[Region] = []
+    for region_json in get(STATION_URL, headers=REQUEST_HEADERS).json():
+        region = Region(**region_json)
+        if region.region_id and region.name:
+                regions.append(region)
 
-    for record in records:
-        all_records.append(StationRecord(datetime=record["datetime"], channels=record["channels"]))
+    return regions
 
-    # This need not remain here permanently, but for now let's verify the data arrived in chronological order.
-    # If this ever fails, we'll sort.
-    for i, record in enumerate(all_records[1:]):
-        assert all_records[i].datetime < record.datetime
 
-    return all_records
+def get_station_names() -> Dict[int, str]:
+    station_names: Dict[int, str] = {}
+
+    station_data = get_station_data()
+    for region in station_data:
+        for station in region.stations:
+            if station.station_id is not None and station.name is not None:
+                station_names[station.station_id] = station.name
+
+    return station_names
 
 
 # These fail a lot, so we'll try tenacity
 @retry(stop=stop_after_attempt(10), wait=wait_fixed(10), reraise=True)
 def post(*args: Any, **kwargs: Any) -> requests.Response:
-    req = requests.post(*args, **kwargs)                        # type: ignore
+    req = requests.post(*args, **kwargs)
     req.raise_for_status()
     return req
 
 
 @retry(stop=stop_after_attempt(10), wait=wait_fixed(10), reraise=True)
 def get(*args: Any, **kwargs: Any) -> requests.Response:
-    req = requests.get(*args, **kwargs)                         # type: ignore
+    req = requests.get(*args, **kwargs)
     req.raise_for_status()
     return req
 
 
-def get_station_data() -> List[Dict[str, Any]]:
-    return post(STATION_URL, headers=REQUEST_HEADERS).json()    # type: ignore
-
-
-def get_station_names() -> Dict[int, str]:
-    stations_names = {}
-
-    stations = get_station_data()
-    for station in stations:
-        stations_names[station["serialCode"]] = station["name"]
-
-    return stations_names
-
 
 """
-To get a current list of stations, print the output of deq_tools.get_station_names()
-These station ids were current as of Sept 2020:
-    1: 'Tualatin Bradbury Court'
-    2: 'Portland SE Lafayette'
-    6: 'Portland Jefferson HS'
-    7: 'Sauvie Island'
-    8: 'Beaverton Highland Park'
-    9: 'Hillsboro Hare Field'
-    10: 'Carus Spangler Road'
-    11: 'Salem State Hospital'
-    12: 'Turner Cascade Junior HS'
-    13: 'Lyons Marilynn School'
-    14: 'Albany Calapooia School'
-    15: 'Sweet Home Fire Department'
-    16: 'Corvallis Circle Blvd'
-    17: 'Roseburg Garden Valley'
-    19: 'Grants Pass Parkside School
-    20: 'Medford TV'
-    22: 'Provolt Seed Orchard'
-    23: 'Shady Cove School'
-    24: 'Talent'
-    26: 'Klamath Falls Peterson School'
-    27: 'Lakeview Center and M'
-    28: 'Bend Pump Station'
-    30: 'Baker City Forest Service'
-    31: 'Enterprise Forest Service'
-    32: 'La Grande Hall and N'
-    33: 'Pendleton McKay Creek'
-    34: 'The Dalles Cherry Heights School'
-    35: 'Cove City Hall'
-    37: 'Hermiston Municipal Airport'
-    39: 'Bend Road Department'
-    40: 'Madras Westside Elementary'
-    41: 'Prineville Davidson Park'
-    42: 'Burns Washington Street'
-    44: 'Silverton James and Western'
-    46: 'John Day Dayton Street'
-    47: 'Sisters Forest Service'
-    48: 'Cave Junction Forest Service'
-    49: 'Medford Welch and Jackson'
-    50: 'Ashland Fire Department'
-    56: 'Eugene Amazon Park'
-    57: 'Cottage Grove City Shops'
-    58: 'Springfield City Hall'
-    59: 'Eugene Saginaw'
-    60: 'Oakridge'
-    61: 'Eugene Wilkes Drive'
-    64: 'Portland Cully Helensview'
-    65: 'Eugene Highway 99'
-    67: 'Hillsboro Hare Field Sensor'
-    68: 'Hillsboro Hare Field Meteorology'
-    69: 'Forest Grove Pacific University'
-    75: 'Florence Forestry Department'
-    78: 'Portland Humboldt Sensors'
-    82: 'Chiloquin Duke Drive'
-    85: 'Redmond High School'
-    88: 'Coos Bay Marshfield HS
-    90: 'Roseburg Fire Dept'
+To get a current list of stations, print the output of deq_tools.get_station_names(); use the
+station_id in the left column when calling get_data()
+
+These station ids were current as of November 2023:
+1: 'Tualatin Bradbury Court'
+2: 'Portland SE Lafayette'
+6: 'Portland Jefferson HS'
+7: 'Sauvie Island'
+8: 'Beaverton Highland Park'
+9: 'Hillsboro Hare Field'
+10: 'Carus Spangler Road'
+11: 'Salem State Hospital'
+12: 'Turner Cascade Junior HS'
+13: 'Lyons Marilynn School'
+14: 'Albany Calapooia School'
+15: 'Sweet Home Fire Department'
+19: 'Grants Pass Parkside School'
+20: 'Medford TV'
+22: 'Provolt Seed Orchard'
+23: 'Shady Cove School'
+24: 'Talent'
+26: 'Klamath Falls Peterson School'
+27: 'Lakeview Center and M'
+28: 'Bend Pump Station'
+29: 'Multorpor'
+30: 'Baker City Forest Service'
+31: 'Enterprise Forest Service'
+32: 'La Grande Hall and N'
+33: 'Pendleton McKay Creek'
+34: 'The Dalles Cherry Heights School'
+35: 'Cove City Hall'
+37: 'Hermiston Municipal Airport'
+39: 'Bend Road Department'
+40: 'Madras Westside Elementary'
+41: 'Prineville Davidson Park'
+42: 'Burns Washington Street'
+43: 'Detroit Lake Forest Service'
+44: 'Silverton James and Western'
+45: 'Mill City'
+46: 'John Day Dayton Street'
+47: 'Sisters Forest Service'
+48: 'Cave Junction Forest Service'
+49: 'Medford Welch and Jackson'
+50: 'Ashland Fire Department'
+52: 'Portland Humboldt School'
+56: 'Eugene Amazon Park'
+57: 'Cottage Grove City Shops'
+58: 'Springfield City Hall'
+59: 'Eugene Saginaw'
+60: 'Oakridge'
+61: 'Eugene Wilkes Drive'
+64: 'Portland Cully Helensview'
+65: 'Eugene Highway 99'
+67: 'Hillsboro Hare Field Sensor'
+68: 'Hillsboro Hare Field Meteorological'
+69: 'Forest Grove Pacific University'
+75: 'Florence Forestry Department'
+78: 'Portland Humboldt Sensors'
+81: 'Portland SE12th and Salmon'
+82: 'Chiloquin Duke Drive'
+83: 'Brookings CPFA'
+85: 'Redmond High School'
+88: 'Coos Bay Marshfield HS'
+89: 'Bend NE 8th & Emerson'
+90: 'Roseburg Fire Dept'
+105: 'La Pine Rural Fire Dept 103'
+106: 'Bend NE 8th & Emerson Sensors'
+107: 'Gresham Centennial High School'
+109: 'Dallas LaCreole Middle School'
+110: 'Ontario May Roberts Elementary School'
+111: 'Hood River West Side Fire Department'
+112: 'Corvallis EPA Office'
+113: 'Estacada Clackamas River Sc'
+114: 'Portland Roosevelt High School'
+115: 'Portland Lane Middle School'
+117: 'Portland Lincoln High School'
+118: 'Portland McDaniel High School'
+120: 'Bend Ponderosa Elementary School'
+121: 'Bend Pine Ridge Elementary School'
+122: 'Sunriver Three Rivers Elementary School'
+123: 'Salem Chemeketa Community College'
+124: 'Woodburn Chemeketa Community College'
+125: 'Toledo NE HWY20 & NW A St'
+126: 'Tillamook Jr High School'
+133: 'McMinnville High School'
+140: 'Medford Jackson Park'
+142: 'Sisters Forest Service SensOR'
+
 """

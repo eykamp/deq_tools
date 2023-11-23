@@ -17,8 +17,8 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
 	name="deq_tools",
-    version="0.2.3",
-    download_url="https://github.com/eykamp/deq_tools/archive/v0.2.3.tar.gz",
+    version="0.3.0",
+    download_url="https://github.com/eykamp/deq_tools/archive/v0.3.0.tar.gz",
     author="Chris Eykamp",
     author_email="chris@eykamp.com",
     description="Tools for downloading Oregon DEQ Air Quality data",
