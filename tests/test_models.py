@@ -2,11 +2,12 @@ from typing import List, Any, Dict
 
 import pytest
 import json as Json
-from datetime import datetime
+from datetime import datetime, timedelta
 from jycm.jycm import YouchamaJsonDiffer        # Finds diffs between json structs
 
 import deq_tools
 from deq_tools import Region
+
 
 @pytest.fixture(scope="session")
 def raw_data():
@@ -50,3 +51,8 @@ def test_models_match_json(raw_data: List[Dict[str, Any]], station_data: List[Re
 
             assert False, "Model differs from raw JSON in an unexpected way."
 
+
+def test_get_data(station_data: List[Region]):
+    station_id = station_data[0].stations[0].station_id
+
+    assert deq_tools.get_data(station_id, datetime.now() - timedelta(days=10), datetime.now())
