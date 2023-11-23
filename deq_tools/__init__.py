@@ -78,7 +78,7 @@ class Monitor(BaseModel):
 
 
 class Station(BaseModel):
-    station_id: Optional[int] = Field(None, alias="stationId")
+    station_id: int = Field(None, alias="stationId")
     stations_tag: Optional[str] = Field(None, alias="stationsTag")
     height: Optional[int] = None
     name: Optional[str] = None
