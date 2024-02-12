@@ -2,3 +2,5 @@ pydantic>2.0
 requests>=2.28.1
 tenacity>=8.1.0
 YouchamaJsonDiffer      # For testing
+keyring
+secretstorage dbus-python       # Needed by keyring, not installed by default
