@@ -24,16 +24,12 @@ from tenacity import retry, stop_after_attempt, wait_fixed      # pip install te
 from datetime import datetime as dt
 
 
-# DEQ data display: https://oraqi.deq.state.or.us
+# DEQ data display: https://aqi.oregon.gov
 
 STATION_URL = "https://aqiapi.oregon.gov/v1/envista/regions"        # Retrieves station data
 DATA_URL = "https://aqiapi.oregon.gov/v1/envista/stations"          # Retrieves data from a station
 
-REQUEST_HEADERS = {
-    "Authorization": "ApiToken 644a9a20-ea8c-4bbb-89e6-6e04f97321fd",       # Not sure if this changes or not... can extract from https://oraqi.deq.state.or.us/
-    "Content-Type": "application/json; charset=UTF-8"
-}
-
+# eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6IndlYiIsIm5iZiI6MTcwNTk4NTM3OSwiZXhwIjoxNzA1OTg4OTc5LCJpYXQiOjE3MDU5ODUzNzl9.tCT1fh8pOaFAnRwM3PE8GNx4LzFDS-XMmOTK2dKsc2E
 # Data models derived from https://app.quicktype.io
 
 class Location(BaseModel):
@@ -151,14 +147,33 @@ def get_data(station_id: int, from_timestamp: dt, to_timestamp: dt, channels: Op
         "onlySummary": False,
     }
 
-    req = get(f"{DATA_URL}/{station_id}/{agg_method}", params=params, headers=REQUEST_HEADERS)
+    req = get(f"{DATA_URL}/{station_id}/{agg_method}", params=params, headers=get_request_headers())
 
     return MonitorData(**req.json())
 
 
+def get_request_headers():
+    headers = get_standard_headers()
+
+    headers["Authorization"] = f"ApiToken {get_auth_token()}"
+    return headers
+
+
+def get_standard_headers():
+    return {"Content-Type": "application/json; charset=UTF-8"}
+
+
+def get_auth_token():
+    return requests.post(
+        url="https://aqi.oregon.gov/Account/GetApiToken",
+        headers=get_standard_headers(),
+        json={"userName": "web"},
+    ).json()
+
+
 def get_station_data() -> List[Region]:
     regions: List[Region] = []
-    for region_json in get(STATION_URL, headers=REQUEST_HEADERS).json():
+    for region_json in get(STATION_URL, headers=get_request_headers()).json():        # Should work with no headers as well
         region = Region(**region_json)
         if region.region_id and region.name:
                 regions.append(region)
